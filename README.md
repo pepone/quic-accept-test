@@ -19,5 +19,4 @@ Non blocking remote certificate validation callback
 Elapsed: 00:00:28.1249768
 ```
 
-
-
+Tested with .NET 7.0.100-rc.2.22477.23 & Ubuntu 22.04.1 LTS
