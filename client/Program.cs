@@ -17,7 +17,9 @@ public static class Program
         {
             RemoteCertificateValidationCallback = (sender, certificate, chain, errors) =>
             {
+                Console.WriteLine("Blocking remote certificate validation callback");
                 semaphore.WaitOne();
+                Console.WriteLine("Releasing remote certificate validation callback");
                 return true;
             },
             ApplicationProtocols = new List<SslApplicationProtocol>
@@ -28,43 +30,52 @@ public static class Program
 
         var clientAuthenticationOptions = new SslClientAuthenticationOptions
         {
-            RemoteCertificateValidationCallback = (sender, certificate, chain, errors) => true,
+            RemoteCertificateValidationCallback = (sender, certificate, chain, errors) =>
+            {
+                Console.WriteLine("Non blocking remote certificate validation callback");
+                return true;
+            },
             ApplicationProtocols = new List<SslApplicationProtocol>
             {
                 new SslApplicationProtocol("foo")
             }
         };
 
-        _ = QuicConnection.ConnectAsync(
-            new QuicClientConnectionOptions
-            {
-                ClientAuthenticationOptions = blockingClientAuthenticationOptions,
-                DefaultStreamErrorCode = 0,
-                DefaultCloseErrorCode = 0,
-                RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
-            },
-            default);
+        _ = Task.Run(() => QuicConnection.ConnectAsync(
+                         new QuicClientConnectionOptions
+                         {
+                             ClientAuthenticationOptions = blockingClientAuthenticationOptions,
+                             DefaultStreamErrorCode = 0,
+                             DefaultCloseErrorCode = 0,
+                             RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
+                         },
+                         default));
 
-        var connectTask = QuicConnection.ConnectAsync(
-            new QuicClientConnectionOptions
-            {
-                ClientAuthenticationOptions = clientAuthenticationOptions,
-                DefaultStreamErrorCode = 0,
-                DefaultCloseErrorCode = 0,
-                RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
-            });
-
-        _ = Task.Run(async () =>
+        Task.Run(async () =>
         {
             await Task.Delay(TimeSpan.FromSeconds(30));
             semaphore.Release();
         });
 
-        var stopWatch = new Stopwatch();
-        stopWatch.Start();
-        await connectTask;
-        stopWatch.Stop();
+        // Small delay to ensure the connection with the blocking certificate verification callback is accepted first
+        await Task.Delay(TimeSpan.FromSeconds(2));
 
-        Console.WriteLine($"Elapsed: {stopWatch.Elapsed}");
+        var task2 = Task.Run(async () =>
+        {
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+            await QuicConnection.ConnectAsync(
+                new QuicClientConnectionOptions
+                {
+                    ClientAuthenticationOptions = clientAuthenticationOptions,
+                    DefaultStreamErrorCode = 0,
+                    DefaultCloseErrorCode = 0,
+                    RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
+                });
+            stopWatch.Stop();
+            Console.WriteLine($"Elapsed: {stopWatch.Elapsed}");
+        });
+
+        await task2;
     }
 }
