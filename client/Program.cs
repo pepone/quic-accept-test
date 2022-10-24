@@ -67,7 +67,7 @@ public static class Program
                              default));
         }
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             await Task.Delay(TimeSpan.FromSeconds(30));
             for (int i = 0; i < numConnections; ++i)
