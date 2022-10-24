@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Security;
 using System.Net.Quic;
 using System.Security.Authentication;
@@ -65,7 +65,7 @@ public static class Program
                     new SslApplicationProtocol("foo")
                 }
             },
-            DefaultStreamErrorCode = 10,
-            DefaultCloseErrorCode = 10,
+            DefaultStreamErrorCode = 0,
+            DefaultCloseErrorCode = 0,
         });
 }

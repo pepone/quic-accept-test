@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.Quic;
@@ -39,8 +39,8 @@ public static class Program
             new QuicClientConnectionOptions
             {
                 ClientAuthenticationOptions = blockingClientAuthenticationOptions,
-                DefaultStreamErrorCode = 10,
-                DefaultCloseErrorCode = 10,
+                DefaultStreamErrorCode = 0,
+                DefaultCloseErrorCode = 0,
                 RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
             },
             default);
@@ -49,10 +49,16 @@ public static class Program
             new QuicClientConnectionOptions
             {
                 ClientAuthenticationOptions = clientAuthenticationOptions,
-                DefaultStreamErrorCode = 10,
-                DefaultCloseErrorCode = 10,
+                DefaultStreamErrorCode = 0,
+                DefaultCloseErrorCode = 0,
                 RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
             });
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30));
+            semaphore.Release();
+        });
 
         var stopWatch = new Stopwatch();
         stopWatch.Start();
