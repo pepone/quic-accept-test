@@ -12,6 +12,19 @@ public static class Program
 {
     static async Task Main()
     {
+        int numConnections = 0;
+        while (true)
+        {
+            Console.Write("Number of blocking connections:" );
+            if (Console.ReadLine() is string numConnectionsStr)
+            {
+                if (int.TryParse(numConnectionsStr, out numConnections))
+                {
+                    break;
+                }
+            }
+        }
+
         using var semaphore = new Semaphore(initialCount: 0, maximumCount: 1);
         var blockingClientAuthenticationOptions = new SslClientAuthenticationOptions
         {
@@ -41,20 +54,26 @@ public static class Program
             }
         };
 
-        _ = Task.Run(() => QuicConnection.ConnectAsync(
-                         new QuicClientConnectionOptions
-                         {
-                             ClientAuthenticationOptions = blockingClientAuthenticationOptions,
-                             DefaultStreamErrorCode = 0,
-                             DefaultCloseErrorCode = 0,
-                             RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
-                         },
-                         default));
+        for (int i = 0; i < numConnections; ++i)
+        {
+            _ = Task.Run(() => QuicConnection.ConnectAsync(
+                             new QuicClientConnectionOptions
+                             {
+                                 ClientAuthenticationOptions = blockingClientAuthenticationOptions,
+                                 DefaultStreamErrorCode = 0,
+                                 DefaultCloseErrorCode = 0,
+                                 RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9090),
+                             },
+                             default));
+        }
 
         Task.Run(async () =>
         {
             await Task.Delay(TimeSpan.FromSeconds(30));
-            semaphore.Release();
+            for (int i = 0; i < numConnections; ++i)
+            {
+                semaphore.Release();
+            }
         });
 
         // Small delay to ensure the connection with the blocking certificate verification callback is accepted first

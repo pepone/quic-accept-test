@@ -3,6 +3,7 @@ using System.Net.Security;
 using System.Net.Quic;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Diagnostics;
 
 [System.Runtime.Versioning.SupportedOSPlatform("macOS")]
 [System.Runtime.Versioning.SupportedOSPlatform("linux")]
@@ -34,10 +35,14 @@ public static class Program
         QuicConnection connection;
         while (!cts.Token.IsCancellationRequested)
         {
+            var stopWatch = new Stopwatch();
             try
             {
+                stopWatch.Start();
+                Console.WriteLine("Accepting connection");
                 connection = await listener.AcceptConnectionAsync(cts.Token).ConfigureAwait(false);
-                break;
+                Console.WriteLine("Connection accepted");
+                _ = connection.CloseAsync(0, default);
             }
             catch (AuthenticationException ex)
             {
@@ -47,6 +52,11 @@ public static class Program
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception retrying: {ex}");
+            }
+            finally
+            {
+                stopWatch.Stop();
+                Console.WriteLine($"Accept connection took: {stopWatch.Elapsed}");
             }
         }
     }
